@@ -13,12 +13,14 @@ LoRI (LoRA with Reduced Interference) is a simple yet effective variant of LoRA 
 ## Installation
 
 Create and activate a Conda environment:
+
 ```
 conda create -n lori python=3.10 -y
 conda activate lori
 ```
 
 Clone the repository and install dependencies:
+
 ```
 git clone https://github.com/juzhengz/LoRI.git
 cd LoRI
@@ -57,7 +59,7 @@ adapter = PeftModel.from_pretrained(base_model, "tomg-group-umd/LoRI-S_code_llam
 tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B")
 ```
 
-`LoRI-D` and `LoRI-S` adapters are provided for code, math, NLU, and safety tasks, using LLaMA-3-8B and Mistral-7B models at ranks 32 and 64. 
+`LoRI-D` and `LoRI-S` adapters are provided for code, math, NLU, and safety tasks, using LLaMA-3-8B and Mistral-7B models at ranks 32 and 64.
 
 ## Adapter Merging
 
@@ -95,7 +97,7 @@ mask_path=/path/to/your/lori-d/code/adapter/masks/0.9_mask.pt
 
 ## Customizing Base Models and Losses
 
-LoRI supports a variety of base models and loss functions, which can be found in the [`config/model`](https://github.com/juzhengz/LoRI/tree/main/config/model) and [`config/loss`](https://github.com/juzhengz/LoRI/tree/main/config/loss) directories of the repository. To add a new model or loss function, you can simply create a new `.yaml` file in the respective directory. 
+LoRI supports a variety of base models and loss functions, which can be found in the [`config/model`](https://github.com/juzhengz/LoRI/tree/main/config/model) and [`config/loss`](https://github.com/juzhengz/LoRI/tree/main/config/loss) directories of the repository. To add a new model or loss function, you can simply create a new `.yaml` file in the respective directory.
 
 ## Acknowledgements
 
@@ -115,4 +117,3 @@ If you use LoRI in your work, please cite:
 ```
 
 Feel free to reach out if you have any questions!
-

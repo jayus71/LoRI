@@ -11,3 +11,5 @@
 /scripts/outputs/
 /scripts/command.sh
 *.ipynb
+
+data/*
