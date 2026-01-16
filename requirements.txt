@@ -21,6 +21,8 @@ scipy==1.14.1
 sentencepiece==0.2.0
 tokenizers==0.20.3
 torch==2.1.2
+# for blackwell gpu eg pro 6000
+# pre cuda13.0  torch2.11dev
 tqdm==4.66.5
 transformers==4.46.2
 wandb==0.15.3

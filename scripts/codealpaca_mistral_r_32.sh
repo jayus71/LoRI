@@ -1,7 +1,7 @@
 #!/bin/bash
 # Set cache directories (please update the paths to your own)
-export HF_HOME=/media/main/hongbo/.cache/huggingface
-export PROJECT_CACHE=/media/main/hongbo/python_projects/LoRI/outputs
+export HF_HOME=./data/huggingface
+export PROJECT_CACHE=./outputs
 export WANDB_MODE=offline
 export MASTER_PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
 export TORCH_DISTRIBUTED_DEBUG=OFF

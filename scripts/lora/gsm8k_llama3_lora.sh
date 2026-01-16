@@ -1,8 +1,8 @@
 #!/bin/bash
 # Set cache directories
-export HF_HOME=/media/main/hongbo/.cache/huggingface
-export PROJECT_CACHE=/media/main/hongbo/python_projects/LoRI/outputs
-export WANDB_MODE=offline
+export HF_HOME=./data/huggingface
+export PROJECT_CACHE=./outputs
+# export WANDB_MODE=offline
 export MASTER_PORT=${MASTER_PORT:-$((10000 + RANDOM % 10000))}
 export TORCH_DISTRIBUTED_DEBUG=OFF
 export HYDRA_FULL_ERROR=1
