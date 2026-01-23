@@ -13,8 +13,9 @@ ANSWER_PROMPT = "The final answer is: "
 cache_dir = os.getenv("PROJECT_CACHE", "~/.cache")
 
 commonsense_tasks = [
-    'boolq',
+    
     'piqa',
+    'boolq',
     'social_i_qa',
     'arc-challenge',
     'arc-easy',
@@ -197,12 +198,27 @@ def extract_answer(dataset, sentence:str) -> str:
 
     if dataset == 'gsm8k':
         return extract_answer_gsm8k(sentence)
+    elif dataset == 'mmlu':
+        return extract_answer_mmlu(sentence)
     elif dataset == 'hexphi':
         return extract_answer_purebad(sentence)
     elif dataset in commonsense_tasks:
         return extract_answer_commonsense(dataset, sentence)
     else:
         return extract_answer_general(sentence)
+
+def extract_answer_mmlu(sentence: str) -> str:
+    """Extract answer from MMLU response - expects a number 0-3 after '### Answer Index:'"""
+    sentence = sentence.strip()
+    # Split by the answer delimiter to get only the generated part
+    # This is crucial because model.generate() returns the full sequence including prompt
+    sentence = sentence.split("### Answer Index:")[-1]
+    # Try to find the first number between 0 and 3 in the answer part
+    pattern = re.compile(r'[0-3]')
+    match = pattern.search(sentence)
+    if match:
+        return match.group(0)
+    return ''
 
 def compute_accuracy(dataset, pred: list, gold: list):    
     def compute_accuracy_gsm8k(pred: list, gold: list):
@@ -248,9 +264,19 @@ def compute_accuracy(dataset, pred: list, gold: list):
             if p == g:
                 acc += 1
         return acc / len(pred)
+    
+    def compute_accuracy_mmlu(pred: list, gold: list):
+        """Compute accuracy for MMLU - exact match on answer index."""
+        acc = 0
+        for p, g in zip(pred, gold):
+            if str(p) == str(g):
+                acc += 1
+        return acc / len(pred) if len(pred) > 0 else 0.0
 
     if dataset == 'gsm8k':
         return compute_accuracy_gsm8k(pred, gold)
+    elif dataset == 'mmlu':
+        return compute_accuracy_mmlu(pred, gold)
     elif dataset == 'arc':
         return compute_accuracy_arc(pred, gold)
     elif dataset == 'sql':

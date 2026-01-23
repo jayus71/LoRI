@@ -246,6 +246,60 @@ def get_codealpaca(split: str, silent: bool = False, cache_dir: str = None, data
     return data
 
 
+def get_mmlu(split: str, silent: bool = False, cache_dir: str = None, data_fraction: float = 1.0) -> Dict[str, Dict[str, Union[List[Tuple[int, int]], List[str], str]]]:
+    """Load MMLU dataset from Hugging Face.
+    
+    Args:
+        split: 'train' or 'test' (uses 'auxiliary_train' for train, 'test' for test)
+        silent: Whether to show progress bar
+        cache_dir: Cache directory for datasets
+        data_fraction: Fraction of data to use
+    """
+    # Map split names - MMLU uses 'auxiliary_train' for training and 'test' for testing
+    if split == 'train':
+        mmlu_split = 'auxiliary_train'
+    elif split == 'test' or split == 'validation':
+        mmlu_split = 'test'
+    else:
+        mmlu_split = split
+    
+    # Load MMLU dataset from Hugging Face
+    dataset = load_dataset("cais/mmlu", "all", split=mmlu_split, cache_dir=cache_dir)
+    num_conversations = len(dataset)
+    dataset = dataset.select(range(int(num_conversations * data_fraction)))
+    
+    data = defaultdict(lambda: defaultdict(list))
+    
+    def generate_mmlu_prompt(question, choices):
+        """Generate MMLU-style prompt following FlyLoRA template."""
+        # Format choices as options
+        options = "\n".join([f"{i}. {choice}" for i, choice in enumerate(choices)])
+        
+        prompt = f"""Carefully read the following question and select the most correct answer from the given choices. You must output ONLY a single number between 0 and 3 corresponding to the option index. Do not include any other text.
+
+                ### Question:
+                {question}
+
+                ### Options:
+                {options}
+
+                ### Answer Index:"""
+        return prompt
+    
+    for row in tqdm.tqdm(dataset, desc='Processing MMLU', disable=silent):
+        question = row['question']
+        choices = row['choices']
+        answer = row['answer']
+        
+        prompt = generate_mmlu_prompt(question, choices)
+        # The target is just the answer index as a string
+        data[prompt]['sft_target'] = str(answer)
+        data[prompt]['pairs'] = []
+        data[prompt]['responses'] = []
+    
+    return data
+
+
 def get_dataset(name: str, split: str, silent: bool = False, cache_dir: str = None, **kwargs):
     """Load the given dataset by name. Supported by default are 'shp', 'hh', and 'se'."""
     if name == 'gsm8k':
@@ -260,6 +314,8 @@ def get_dataset(name: str, split: str, silent: bool = False, cache_dir: str = No
         data = get_codealpaca(split, silent=silent, cache_dir=cache_dir, data_fraction=kwargs['data_fraction'])
     elif name == 'saferpaca':
         data = get_saferpaca(split, silent=silent, cache_dir=cache_dir, data_fraction=kwargs['data_fraction'])
+    elif name == 'mmlu':
+        data = get_mmlu(split, silent=silent, cache_dir=cache_dir, data_fraction=kwargs['data_fraction'])
     else:
         data = get_default(name, split, silent=silent, cache_dir=cache_dir, data_fraction=kwargs['data_fraction'])
 
