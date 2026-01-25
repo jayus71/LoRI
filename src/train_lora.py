@@ -90,6 +90,10 @@ def main(config: DictConfig):
                 target_modules=['k_proj', 'gate_proj', 'v_proj', 'up_proj', 'q_proj', 'o_proj', 'down_proj']
         )
         policy = get_peft_model(policy, peft_config)
+        # Convert LoRA parameters to the same dtype as the base model
+        for name, param in policy.named_parameters():
+            if 'lora_A' in name or 'lora_B' in name:
+                param.data = param.data.to(policy_dtype)
         policy.print_trainable_parameters()
     else:
         policy = PeftModel.from_pretrained(policy, config.model.archive)

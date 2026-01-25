@@ -126,7 +126,7 @@ def concatenated_forward(self, model: nn.Module, batch: Dict[str, Union[List, to
         We do this to avoid doing two forward passes, because it's faster for FSDP.
     """
     concatenated_batch = concatenated_inputs(batch)
-    all_logits = model(concatenated_batch['concatenated_input_ids'], attention_mask=concatenated_batch['concatenated_attention_mask']).logits.to(torch.float32)
+    all_logits = model(concatenated_batch['concatenated_input_ids'], attention_mask=concatenated_batch['concatenated_attention_mask']).logits
     all_logps = _get_batch_logps(all_logits, concatenated_batch['concatenated_labels'], average_log_prob=False)
     chosen_logps = all_logps[:batch['chosen_input_ids'].shape[0]]
     rejected_logps = all_logps[batch['chosen_input_ids'].shape[0]:]
@@ -270,39 +270,39 @@ class BasicTrainer(object):
             rejected_rewards = all_gather_if_needed(rejected_rewards, self.rank, self.world_size)
             reward_accuracies = all_gather_if_needed(reward_accuracies, self.rank, self.world_size)
 
-            metrics[f'rewards_{train_test}/chosen'] = chosen_rewards.cpu().numpy().tolist()
-            metrics[f'rewards_{train_test}/chosen_logprob_ratio'] = (chosen_rewards / loss_config.beta).cpu().numpy().tolist()
-            metrics[f'rewards_{train_test}/rejected'] = rejected_rewards.cpu().numpy().tolist()
-            metrics[f'rewards_{train_test}/rejected_logprob_ratio'] = (rejected_rewards / loss_config.beta).cpu().numpy().tolist()
-            metrics[f'rewards_{train_test}/accuracies'] = reward_accuracies.cpu().numpy().tolist()
-            metrics[f'rewards_{train_test}/margins'] = (chosen_rewards - rejected_rewards).cpu().numpy().tolist()
-            metrics[f'rewards_{train_test}/beta_normalized_margin'] = ((chosen_rewards - rejected_rewards) / loss_config.beta).cpu().numpy().tolist()
+            metrics[f'rewards_{train_test}/chosen'] = chosen_rewards.cpu().float().numpy().tolist()
+            metrics[f'rewards_{train_test}/chosen_logprob_ratio'] = (chosen_rewards / loss_config.beta).cpu().float().numpy().tolist()
+            metrics[f'rewards_{train_test}/rejected'] = rejected_rewards.cpu().float().numpy().tolist()
+            metrics[f'rewards_{train_test}/rejected_logprob_ratio'] = (rejected_rewards / loss_config.beta).cpu().float().numpy().tolist()
+            metrics[f'rewards_{train_test}/accuracies'] = reward_accuracies.cpu().float().numpy().tolist()
+            metrics[f'rewards_{train_test}/margins'] = (chosen_rewards - rejected_rewards).cpu().float().numpy().tolist()
+            metrics[f'rewards_{train_test}/beta_normalized_margin'] = ((chosen_rewards - rejected_rewards) / loss_config.beta).cpu().float().numpy().tolist()
 
             policy_chosen_logps = all_gather_if_needed(policy_chosen_logps.detach(), self.rank, self.world_size)
             policy_rejected_logps = all_gather_if_needed(policy_rejected_logps.detach(), self.rank, self.world_size)
             reference_chosen_logps = all_gather_if_needed(reference_chosen_logps.detach(), self.rank, self.world_size)
             reference_rejected_logps = all_gather_if_needed(reference_rejected_logps.detach(), self.rank, self.world_size)
 
-            metrics[f'logps_{train_test}/chosen'] = policy_chosen_logps.cpu().numpy().tolist()
-            metrics[f'logps_{train_test}/rejected'] = policy_rejected_logps.cpu().numpy().tolist()
-            metrics[f'logps_{train_test}/reference_chosen'] = reference_chosen_logps.cpu().numpy().tolist()
-            metrics[f'logps_{train_test}/reference_rejected'] = reference_rejected_logps.cpu().numpy().tolist()
-            metrics[f'importance_weights_{train_test}/rejected'] = torch.exp(policy_rejected_logps.detach() - reference_rejected_logps.detach()).cpu().numpy().tolist()
+            metrics[f'logps_{train_test}/chosen'] = policy_chosen_logps.cpu().float().numpy().tolist()
+            metrics[f'logps_{train_test}/rejected'] = policy_rejected_logps.cpu().float().numpy().tolist()
+            metrics[f'logps_{train_test}/reference_chosen'] = reference_chosen_logps.cpu().float().numpy().tolist()
+            metrics[f'logps_{train_test}/reference_rejected'] = reference_rejected_logps.cpu().float().numpy().tolist()
+            metrics[f'importance_weights_{train_test}/rejected'] = torch.exp(policy_rejected_logps.detach() - reference_rejected_logps.detach()).cpu().float().numpy().tolist()
 
         elif loss_config.name == 'sft':
-            policy_chosen_logits = self.policy(batch['chosen_input_ids'], attention_mask=batch['chosen_attention_mask']).logits.to(torch.float32)
+            policy_chosen_logits = self.policy(batch['chosen_input_ids'], attention_mask=batch['chosen_attention_mask']).logits
             policy_chosen_logps = _get_batch_logps(policy_chosen_logits, batch['chosen_labels'], average_log_prob=False)
             policy_chosen_ppl = _get_batch_logps(policy_chosen_logits, batch['chosen_labels'], average_log_prob=True)
             policy_chosen_ppl = all_gather_if_needed(policy_chosen_ppl.detach(), self.rank, self.world_size)
-            metrics[f'ppl_{train_test}'] = policy_chosen_ppl.cpu().numpy().tolist()
+            metrics[f'ppl_{train_test}'] = policy_chosen_ppl.cpu().float().numpy().tolist()
 
             losses = -policy_chosen_logps
 
         policy_chosen_logps = all_gather_if_needed(policy_chosen_logps.detach(), self.rank, self.world_size)
-        metrics[f'logps_{train_test}'] = policy_chosen_logps.cpu().numpy().tolist()
+        metrics[f'logps_{train_test}'] = policy_chosen_logps.cpu().float().numpy().tolist()
 
         all_devices_losses = all_gather_if_needed(losses.detach(), self.rank, self.world_size)
-        metrics[f'loss/{train_test}'] = all_devices_losses.cpu().numpy().tolist()
+        metrics[f'loss/{train_test}'] = all_devices_losses.cpu().float().numpy().tolist()
 
         return losses.mean(), metrics
 

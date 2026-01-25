@@ -15,10 +15,11 @@ def load_model_tokenizer(args):
     with open(model_yaml_path, 'r') as file:
         model_config = yaml.safe_load(file)
         load_path = model_config.get('name_or_path')
+        policy_dtype = getattr(torch, model_config.get('policy_dtype', 'bfloat16'))
 
     base_model = AutoModelForCausalLM.from_pretrained(
             load_path,
-            torch_dtype=torch.float32,
+            torch_dtype=policy_dtype,
             device_map='auto',
     )
     tokenizer = AutoTokenizer.from_pretrained(load_path)
