@@ -466,8 +466,10 @@ class BasicTrainer(object):
                 output_dir = os.path.join(self.run_dir, f'step-{best_batch_counter}')
                 rank0_print(f'creating checkpoint to write to {output_dir}...')
                 os.makedirs(output_dir, exist_ok=True)
-                if self.rank == 0 and policy_state_dict is not None:
-                    self.policy.save_pretrained(output_dir, state_dict=policy_state_dict)
+                # if self.rank == 0 and policy_state_dict is not None:
+                if self.rank == 0:
+                    #### self.policy.save_pretrained(output_dir, state_dict=policy_state_dict)
+                    self.policy.save_pretrained(output_dir)
                     policy_state_dict = None
                 dist.barrier()
         
@@ -480,11 +482,12 @@ class BasicTrainer(object):
                     next_save += self.config.save_every
                 rank0_print(f'creating checkpoint to write to {output_dir}...')
                 os.makedirs(output_dir, exist_ok=True)
-                with FSDP.state_dict_type(self.policy, StateDictType.FULL_STATE_DICT, state_dict_config=FullStateDictConfig(offload_to_cpu=True, rank0_only=True)):
-                    policy_state_dict = self.policy.state_dict()      
+                # with FSDP.state_dict_type(self.policy, StateDictType.FULL_STATE_DICT, state_dict_config=FullStateDictConfig(offload_to_cpu=True, rank0_only=True)):
+                #     policy_state_dict = self.policy.state_dict()      
                 if self.rank == 0:
-                    self.policy.save_pretrained(output_dir, state_dict=policy_state_dict)
-                del policy_state_dict
+                    #### self.policy.save_pretrained(output_dir, state_dict=policy_state_dict)
+                    self.policy.save_pretrained(output_dir)
+                # del policy_state_dict
                 dist.barrier()
             #### END SAVING ####
 

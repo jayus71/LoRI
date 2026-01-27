@@ -10,7 +10,7 @@ export HYDRA_FULL_ERROR=1
 # LoRA training
 dataset_name=gsm8k
 model=qwen38b
-n_epochs=3
+n_epochs=1
 batch_size=32
 grad_norm=1
 save_every=epoch_$n_epochs

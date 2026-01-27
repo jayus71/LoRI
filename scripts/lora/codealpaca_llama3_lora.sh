@@ -66,4 +66,4 @@ done
 echo "All experiments completed!"
 
 # Shutdown the machine
-/usr/bin/shutdown -h now
+# /usr/bin/shutdown -h now

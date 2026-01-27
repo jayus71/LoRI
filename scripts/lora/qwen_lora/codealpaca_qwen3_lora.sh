@@ -19,7 +19,7 @@ lora_alpha=64
 sparsity_ratio=0.0
 
 # Define learning rates to try - dense search in optimal range
-learning_rates=(1.3e-4 1.35e-4 1.4e-4 )
+learning_rates=(2e-4 5e-5 3e-4)
 
 # Loop through each learning rate
 for lr in "${learning_rates[@]}"; do
