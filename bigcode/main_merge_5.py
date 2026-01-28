@@ -53,7 +53,14 @@ def parse_args():
         "--peft_model",
         type=str,
         default=['mistralai/Mistral-7B-v0.1'], nargs='+',
-        help="Adapter to the PEFT base model. Can be utilized for loading PEFT adapters such as a LoRA trained model. The --model parameter needs to be the base model.",
+        help="Adapter paths to the PEFT base model. Can be utilized for loading PEFT adapters such as a LoRA trained model. The --model parameter needs to be the base model.",
+    )
+    parser.add_argument(
+        "--adapter_names",
+        type=str,
+        nargs='+',
+        default=None,
+        help="Adapter names for each PEFT model (optional, auto-generated if not provided)",
     )
     parser.add_argument(
         "--revision",
@@ -210,9 +217,12 @@ def parse_args():
         action="store_true",
         help="Don't run generation but benchmark groundtruth (useful for debugging)",
     )
-    parser.add_argument('--combination_type', type=str, default='cat')
-    parser.add_argument('--density', type=float, default=0.7)
-    parser.add_argument('--weights', type=float, default=[1.0, 1.0, 1.0, 1.0], nargs='+')
+    parser.add_argument('--combination_type', type=str, default='cat',
+                        help='Combination type for merging adapters')
+    parser.add_argument('--density', type=float, default=0.7,
+                        help='Density parameter for certain merge methods')
+    parser.add_argument('--weights', type=float, nargs='+', default=None,
+                        help='Weights for each adapter (auto-generated equal weights if not provided)')
     return parser.parse_args()
 
 
@@ -344,19 +354,69 @@ def main():
             model.resize_token_embeddings(len(tokenizer))
         
         if args.peft_model:
-            from peft import PeftModel  # dynamic import to avoid dependency on peft           
-            model = PeftModel.from_pretrained(model, args.peft_model[0], adapter_name='math')
-            model.load_adapter(args.peft_model[1], adapter_name="commonsense")
-            model.load_adapter(args.peft_model[2], adapter_name="code")
-            model.load_adapter(args.peft_model[3], adapter_name="safety")
-            model.load_adapter(args.peft_model[4], adapter_name="mmlu")
-            adapters = ["math", "commonsense", "code", "safety", "mmlu"]
-            adapter_name = "merge"
-            model.add_weighted_adapter(adapters, args.weights, adapter_name, combination_type=args.combination_type, density=args.density)
-            model.set_adapter("merge")
-            print("Loaded PEFT model. Merging...")
+            from peft import PeftModel  # dynamic import to avoid dependency on peft
+            
+            num_adapters = len(args.peft_model)
+            
+            # Auto-generate adapter names if not provided
+            if args.adapter_names is None:
+                args.adapter_names = [f"adapter_{i}" for i in range(num_adapters)]
+                print(f"Auto-generated adapter names: {args.adapter_names}")
+            else:
+                if len(args.adapter_names) != num_adapters:
+                    raise ValueError(
+                        f"Number of adapter_names ({len(args.adapter_names)}) "
+                        f"must match number of peft_model paths ({num_adapters})"
+                    )
+            
+            # Auto-generate equal weights if not provided
+            if args.weights is None:
+                args.weights = [1.0] * num_adapters
+                print(f"Using equal weights: {args.weights}")
+            else:
+                if len(args.weights) != num_adapters:
+                    raise ValueError(
+                        f"Number of weights ({len(args.weights)}) "
+                        f"must match number of peft_model paths ({num_adapters})"
+                    )
+            
+            print(f"\n{'='*70}")
+            print(f"Loading and merging {num_adapters} adapters")
+            print(f"{'='*70}")
+            print(f"Adapter paths: {args.peft_model}")
+            print(f"Adapter names: {args.adapter_names}")
+            print(f"Weights: {args.weights}")
+            print(f"Combination type: {args.combination_type}")
+            print(f"Density: {args.density}")
+            print(f"{'='*70}\n")
+            
+            # Load first adapter
+            print(f"[1/{num_adapters}] Loading adapter: {args.adapter_names[0]}")
+            model = PeftModel.from_pretrained(
+                model, 
+                args.peft_model[0], 
+                adapter_name=args.adapter_names[0]
+            )
+            
+            # Load remaining adapters
+            for i in range(1, num_adapters):
+                print(f"[{i+1}/{num_adapters}] Loading adapter: {args.adapter_names[i]}")
+                model.load_adapter(args.peft_model[i], adapter_name=args.adapter_names[i])
+            
+            # Merge adapters
+            print(f"\nMerging {num_adapters} adapters...")
+            merge_adapter_name = "merged"
+            model.add_weighted_adapter(
+                args.adapter_names, 
+                args.weights, 
+                merge_adapter_name, 
+                combination_type=args.combination_type, 
+                density=args.density
+            )
+            model.set_adapter(merge_adapter_name)
+            print("Merging and unloading...")
             model.merge_and_unload()
-            print("Merge complete.")
+            print("Merge complete.\n")
 
         evaluator = Evaluator(accelerator, model, tokenizer, args)
 
@@ -409,15 +469,43 @@ def main():
                     for sub_key, sub_value in value.items():
                         print(f"  {sub_key}: {sub_value}")
                         
-            os.makedirs(os.path.join(args.metric_output_path, "results"), exist_ok=True)
-            with open(f"{args.metric_output_path}/results/merge_5_loras.txt", "a") as f:
-                f.write(f"Model: {results['config']['peft_model']}\n")
-                f.write(f"Combination_type: {results['config']['combination_type']}, density: {results['config']['density']}, weights: {results['config']['weights']}\n")
+            # 保存为 CSV 格式，使用方法相关的路径
+            import csv
+            method_name = results['config']['combination_type']
+            results_dir = os.path.join(args.metric_output_path, method_name)
+            os.makedirs(results_dir, exist_ok=True)
+            csv_file = os.path.join(results_dir, "results.csv")
+            
+            # 检查 CSV 文件是否存在
+            file_exists = os.path.isfile(csv_file)
+            
+            with open(csv_file, "a", newline='') as f:
+                writer = csv.writer(f)
+                
+                # 如果文件不存在，写入表头
+                if not file_exists:
+                    writer.writerow([
+                        "task", "metric", "value",
+                        "combination_type", "density", "weights",
+                        "num_adapters", "adapter_names"
+                    ])
+                
+                # 写入数据行
                 for key, value in results.items():
                     if key != "config":
-                        f.write(f"{key}:\n")
                         for sub_key, sub_value in value.items():
-                            f.write(f"  {sub_key}: {sub_value}\n")
+                            writer.writerow([
+                                key,
+                                sub_key,
+                                sub_value,
+                                results['config']['combination_type'],
+                                results['config']['density'],
+                                " ".join(map(str, results['config']['weights'])),
+                                len(results['config']['peft_model']),
+                                " ".join(results['config'].get('adapter_names', [f"adapter_{i}" for i in range(len(results['config']['peft_model']))]))
+                            ])
+            
+            print(f"\n结果已保存到: {csv_file}")
                         
 
 if __name__ == "__main__":
