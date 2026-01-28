@@ -37,6 +37,7 @@ echo "  5. mmlu:        ${adapter_path_5}"
 echo "输出路径: ${results_path}"
 echo ""
 echo "合并方法: cat, linear, svd, ties, dare_ties, dare_linear"
+echo "注意: 权重已归一化（总和=1），不同方法使用推荐的density参数"
 echo "=========================================="
 echo ""
 
@@ -47,6 +48,7 @@ echo ""
 echo "=========================================="
 echo "方法 1: Concat Merging"
 echo "描述: 简单拼接，适用于不同任务的适配器"
+echo "权重: 均等 (0.2 x 5 = 1.0)"
 echo "=========================================="
 
 python src/merge_5_loras.py \
@@ -56,7 +58,7 @@ python src/merge_5_loras.py \
         --adapter_names $adapter_names \
         --results_path $results_path \
         --combination_type cat \
-        --weights 0.4 0.4 0.4 0.4 0.4
+        --weights 0.2 0.2 0.2 0.2 0.2
 
 echo ""
 echo "评估代码生成任务 (HumanEval)..."
@@ -71,7 +73,7 @@ accelerate launch bigcode/main_merge_5.py \
         --batch_size 10 \
         --allow_code_execution \
         --combination_type cat \
-        --weights 0.4 0.4 0.4 0.4 0.4
+        --weights 0.2 0.2 0.2 0.2 0.2
 
 echo "✓ Concat merging 完成"
 echo ""
@@ -83,6 +85,7 @@ echo ""
 echo "=========================================="
 echo "方法 2: Linear Merging"
 echo "描述: 加权线性组合，经典的模型融合方法"
+echo "权重: 均等 (0.2 x 5 = 1.0)"
 echo "=========================================="
 
 python src/merge_5_loras.py \
@@ -92,7 +95,7 @@ python src/merge_5_loras.py \
         --adapter_names $adapter_names \
         --results_path $results_path \
         --combination_type linear \
-        --weights 0.4 0.4 0.4 0.4 0.4
+        --weights 0.2 0.2 0.2 0.2 0.2
 
 echo ""
 echo "评估代码生成任务 (HumanEval)..."
@@ -107,7 +110,7 @@ accelerate launch bigcode/main_merge_5.py \
         --batch_size 10 \
         --allow_code_execution \
         --combination_type linear \
-        --weights 0.4 0.4 0.4 0.4 0.4
+        --weights 0.2 0.2 0.2 0.2 0.2
 
 echo "✓ Linear merging 完成"
 echo ""
@@ -119,6 +122,8 @@ echo ""
 echo "=========================================="
 echo "方法 3: SVD Merging"
 echo "描述: 基于奇异值分解的低秩合并"
+echo "权重: 均等 (0.2 x 5 = 1.0)"
+echo "Density: 0.5 (推荐值)"
 echo "=========================================="
 
 python src/merge_5_loras.py \
@@ -128,8 +133,8 @@ python src/merge_5_loras.py \
         --adapter_names $adapter_names \
         --results_path $results_path \
         --combination_type svd \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.5
 
 echo ""
 echo "评估代码生成任务 (HumanEval)..."
@@ -144,8 +149,8 @@ accelerate launch bigcode/main_merge_5.py \
         --batch_size 10 \
         --allow_code_execution \
         --combination_type svd \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.5
 
 echo "✓ SVD merging 完成"
 echo ""
@@ -158,6 +163,8 @@ echo "=========================================="
 echo "方法 4: TIES Merging"
 echo "描述: Trim, Elect Sign & Merge (TIES)"
 echo "论文: https://arxiv.org/abs/2306.01708"
+echo "权重: 均等 (0.2 x 5 = 1.0)"
+echo "Density: 0.5 (TIES 推荐默认值)"
 echo "=========================================="
 
 python src/merge_5_loras.py \
@@ -167,8 +174,8 @@ python src/merge_5_loras.py \
         --adapter_names $adapter_names \
         --results_path $results_path \
         --combination_type ties \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.5
 
 echo ""
 echo "评估代码生成任务 (HumanEval)..."
@@ -183,8 +190,8 @@ accelerate launch bigcode/main_merge_5.py \
         --batch_size 10 \
         --allow_code_execution \
         --combination_type ties \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.5
 
 echo "✓ TIES merging 完成"
 echo ""
@@ -197,6 +204,9 @@ echo "=========================================="
 echo "方法 5: DARE-TIES Merging"
 echo "描述: Drop And REscale + TIES"
 echo "论文: https://arxiv.org/abs/2311.03099"
+echo "权重: 均等 (0.2 x 5 = 1.0)"
+echo "Density: 0.5 (与 TIES 保持一致)"
+echo "注意: DARE-TIES 可能效果不稳定"
 echo "=========================================="
 
 python src/merge_5_loras.py \
@@ -206,8 +216,8 @@ python src/merge_5_loras.py \
         --adapter_names $adapter_names \
         --results_path $results_path \
         --combination_type dare_ties \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.5
 
 echo ""
 echo "评估代码生成任务 (HumanEval)..."
@@ -222,8 +232,8 @@ accelerate launch bigcode/main_merge_5.py \
         --batch_size 10 \
         --allow_code_execution \
         --combination_type dare_ties \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.5
 
 echo "✓ DARE-TIES merging 完成"
 echo ""
@@ -236,6 +246,8 @@ echo "=========================================="
 echo "方法 6: DARE-Linear Merging"
 echo "描述: Drop And REscale + Linear"
 echo "论文: https://arxiv.org/abs/2311.03099"
+echo "权重: 均等 (0.2 x 5 = 1.0)"
+echo "Density: 0.75 (DARE-Linear 推荐 0.7-0.8)"
 echo "=========================================="
 
 python src/merge_5_loras.py \
@@ -245,8 +257,8 @@ python src/merge_5_loras.py \
         --adapter_names $adapter_names \
         --results_path $results_path \
         --combination_type dare_linear \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.75
 
 echo ""
 echo "评估代码生成任务 (HumanEval)..."
@@ -261,8 +273,8 @@ accelerate launch bigcode/main_merge_5.py \
         --batch_size 10 \
         --allow_code_execution \
         --combination_type dare_linear \
-        --weights 0.4 0.4 0.4 0.4 0.4 \
-        --density 0.7
+        --weights 0.2 0.2 0.2 0.2 0.2 \
+        --density 0.75
 
 echo "✓ DARE-Linear merging 完成"
 echo ""
@@ -270,13 +282,14 @@ echo ""
 echo "=========================================="
 echo "所有合并和评估任务完成！"
 echo "=========================================="
-echo "测试的方法:"
-echo "  1. Cat (Concatenation)"
-echo "  2. Linear (Weighted Average)"
-echo "  3. SVD (Singular Value Decomposition)"
-echo "  4. TIES (Trim, Elect Sign & Merge)"
-echo "  5. DARE-TIES (Drop And REscale + TIES)"
-echo "  6. DARE-Linear (Drop And REscale + Linear)"
+echo "测试的方法及参数:"
+echo "  1. Cat:         weights=0.2x5, density=N/A"
+echo "  2. Linear:      weights=0.2x5, density=N/A"
+echo "  3. SVD:         weights=0.2x5, density=0.5"
+echo "  4. TIES:        weights=0.2x5, density=0.5 (推荐)"
+echo "  5. DARE-TIES:   weights=0.2x5, density=0.5"
+echo "  6. DARE-Linear: weights=0.2x5, density=0.75 (推荐)"
 echo ""
+echo "注意: 所有权重已归一化（总和=1.0）"
 echo "结果保存在: ${results_path}"
 echo "=========================================="
