@@ -127,8 +127,9 @@ def parallel_generations(
 
     is_loaded_in_8bit = getattr(model, "is_loaded_in_8bit", False)
     is_loaded_in_4bit = getattr(model, "is_loaded_in_4bit", False)
-    if args.max_memory_per_gpu is not None:
-        # The model is already sharded across multiple GPUs
+    is_device_mapped = getattr(model, "hf_device_map", None) is not None
+    if args.max_memory_per_gpu is not None or is_device_mapped:
+        # The model is already placed by transformers/accelerate device_map.
         ds_loader = accelerator.prepare(ds_loader)
     elif not is_loaded_in_8bit and not is_loaded_in_4bit:
         # we only wrap data loader to avoid extra memory occupation

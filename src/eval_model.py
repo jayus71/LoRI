@@ -331,8 +331,16 @@ def evaluate(dataset_name, model, tokenizer, args):
         seed=args.seed,
     )
     dataloader = get_batch_iterator(**data_iterator_kwargs)
+    if dataset_name == 'mmlu':
+        max_new_tokens = 5
+    elif dataset_name in commonsense_tasks:
+        max_new_tokens = 16
+    elif dataset_name == 'gsm8k':
+        max_new_tokens = 256
+    else:
+        max_new_tokens = 512
     gen_kwargs = {
-        "max_new_tokens": 512,
+        "max_new_tokens": max_new_tokens,
         "do_sample": args.sample,
         "temperature": 0.6,
         "top_k": 50,

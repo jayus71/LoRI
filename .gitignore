@@ -1,6 +1,7 @@
 *__pycache__
 .vscode
 *.out
+*.log
 *.pt
 *.safetensors
 *.csv

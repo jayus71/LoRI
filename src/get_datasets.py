@@ -264,7 +264,7 @@ def get_mmlu(split: str, silent: bool = False, cache_dir: str = None, data_fract
         mmlu_split = split
     
     # Load MMLU dataset from Hugging Face
-    dataset = load_dataset("cais/mmlu", "all", split=mmlu_split, cache_dir=cache_dir)
+    dataset = load_dataset("cais/mmlu", "all", split=mmlu_split)
     num_conversations = len(dataset)
     dataset = dataset.select(range(int(num_conversations * data_fraction)))
     

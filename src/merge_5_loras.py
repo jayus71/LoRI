@@ -1,3 +1,18 @@
+# NFS flock patch — must be before any `import datasets` / `import filelock`
+import fcntl as _fcntl
+_orig_flock = _fcntl.flock
+def _safe_flock(fd, op):
+    try:
+        _orig_flock(fd, op)
+    except OSError as e:
+        if e.errno in (11, 13, 37):  # EAGAIN / EACCES / ENOLCK — NFS无锁支持
+            pass
+        else:
+            raise
+_fcntl.flock = _safe_flock
+import filelock as _filelock
+_filelock.FileLock = _filelock.SoftFileLock
+
 import re
 import torch
 import os

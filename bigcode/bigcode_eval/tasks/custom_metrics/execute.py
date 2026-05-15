@@ -33,27 +33,31 @@ def check_correctness(check_program, timeout, task_id, completion_id):
     :param completion_id: an optional completion ID so we can match
         the results later even if execution finishes asynchronously.
     """
-    manager = multiprocessing.Manager()
-    result = manager.list()
+    # Use Queue instead of Manager.list() to avoid Manager server socket issues
+    # on older kernels / NFS environments (ConnectionRefusedError with Manager).
+    result_queue = multiprocessing.Queue()
 
-    p = multiprocessing.Process(target=unsafe_execute, args=(check_program, result, timeout))
+    p = multiprocessing.Process(target=unsafe_execute, args=(check_program, result_queue, timeout))
     p.start()
     p.join(timeout=timeout + 1)
     if p.is_alive():
         p.kill()
+        p.join()
 
-    if not result:
-        result.append("timed out")
+    try:
+        result = result_queue.get_nowait()
+    except Exception:
+        result = "timed out"
 
     return dict(
         task_id=task_id,
-        passed=result[0] == "passed",
-        result=result[0],
+        passed=result == "passed",
+        result=result,
         completion_id=completion_id,
     )
 
 
-def unsafe_execute(check_program, result, timeout):
+def unsafe_execute(check_program, result_queue, timeout):
 
     with create_tempdir():
 
@@ -74,11 +78,11 @@ def unsafe_execute(check_program, result, timeout):
             with swallow_io():
                 with time_limit(timeout):
                     exec(check_program, exec_globals)
-            result.append("passed")
+            result_queue.put("passed")
         except TimeoutException:
-            result.append("timed out")
+            result_queue.put("timed out")
         except BaseException as e:
-            result.append(f"failed: {e}")
+            result_queue.put(f"failed: {e}")
 
         # Needed for cleaning up.
         shutil.rmtree = rmtree
@@ -145,14 +149,20 @@ def chdir(root):
     if root == ".":
         yield
         return
-    cwd = os.getcwd()
+    try:
+        cwd = os.getcwd()
+    except FileNotFoundError:
+        cwd = os.environ.get("BIGCODE_EVAL_FALLBACK_CWD", "/tmp")
     os.chdir(root)
     try:
         yield
     except BaseException as exc:
         raise exc
     finally:
-        os.chdir(cwd)
+        try:
+            os.chdir(cwd)
+        except FileNotFoundError:
+            os.chdir(os.environ.get("BIGCODE_EVAL_FALLBACK_CWD", "/tmp"))
 
 
 def reliability_guard(maximum_memory_bytes=None):

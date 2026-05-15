@@ -12,6 +12,12 @@ import warnings
 import csv
 from datetime import datetime
 
+_LORA_MERGE_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'lora_merge'))
+if _LORA_MERGE_DIR not in sys.path:
+    sys.path.insert(0, _LORA_MERGE_DIR)
+from src.hf_nfs_lock_patch import apply_hf_nfs_lock_patch
+apply_hf_nfs_lock_patch()
+
 import datasets
 import torch
 import transformers
@@ -460,9 +466,11 @@ def main():
                     model_kwargs["device_map"] = "auto"
                     print("Loading model in auto mode")
             else:
-                # 默认使用 auto device_map 以确保模型正确分配到GPU
-                model_kwargs["device_map"] = "auto"
-                print("Using auto device_map")
+                if accelerator.num_processes > 1:
+                    model_kwargs["device_map"] = {"": accelerator.local_process_index}
+                    print(f"Using data-parallel device_map on cuda:{accelerator.local_process_index}")
+                else:
+                    print("Using Accelerate single-process placement")
 
         if args.modeltype == "causal":
             model = AutoModelForCausalLM.from_pretrained(
@@ -504,6 +512,12 @@ def main():
             tokenizer.add_special_tokens({'pad_token': '<PAD>'})
             model.config.pad_token_id = tokenizer.pad_token_id
             model.resize_token_embeddings(len(tokenizer))
+
+        is_sharded_model = args.max_memory_per_gpu is not None
+        is_quantized_model = args.load_in_8bit or args.load_in_4bit
+        is_device_mapped_model = "device_map" in model_kwargs
+        if not is_sharded_model and not is_quantized_model and not is_device_mapped_model:
+            model = model.to(accelerator.device)
 
         # 应用合并的权重或加载PEFT模型
         if args.merged_weights:
@@ -604,4 +618,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import torch.distributed as dist
+    try:
+        main()
+    finally:
+        if dist.is_available() and dist.is_initialized():
+            dist.destroy_process_group()

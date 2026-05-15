@@ -1,3 +1,17 @@
+import fcntl as _fcntl
+_orig_flock = _fcntl.flock
+def _safe_flock(fd, op):
+    try:
+        _orig_flock(fd, op)
+    except OSError as e:
+        if e.errno in (11, 13, 37):  # EAGAIN / EACCES / ENOLCK
+            pass
+        else:
+            raise
+_fcntl.flock = _safe_flock
+import filelock as _filelock
+_filelock.FileLock = _filelock.SoftFileLock
+
 import os
 import fnmatch
 import json
@@ -509,4 +523,9 @@ def main():
                         
 
 if __name__ == "__main__":
-    main()
+    import torch.distributed as dist
+    try:
+        main()
+    finally:
+        if dist.is_available() and dist.is_initialized():
+            dist.destroy_process_group()
